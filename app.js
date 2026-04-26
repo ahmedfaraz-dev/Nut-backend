@@ -20,6 +20,7 @@ dotenv.config();
 
 
 const app = express();
+app.set('trust proxy', 1);
 
 // implementing the cors middleware
 const allowedOrigins = ['http://localhost:8000', 'http://localhost:5173', 'http://localhost:5174'];
