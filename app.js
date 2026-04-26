@@ -83,6 +83,10 @@ app.use(express.urlencoded({ extended: true }));
 // implementing the cookie parser middleware
 app.use(cookieParser());
 
+app.get('/', (req, res) => {
+  res.send('API is running 🚀');
+});
+
 
 // implementing the auth routes
 app.use('/api/v1/auth', authRouter);
