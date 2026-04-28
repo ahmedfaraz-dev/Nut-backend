@@ -17,19 +17,23 @@ import { success } from "zod";
 //@ get all admin products
 const getAllAdminProducts = AsyncHandler(async (req, res) => {
     const user = req.user;
+
+    console.log("User is here", user);
     const { page = 1, limit = 10 } = req.query;
 
     const totalProducts = await Product.countDocuments({ user: user._id });
 
     const products = await Product.find({ user: user._id, isActive: true })
-        .select("name price stock isActive activeDeal") // include only these
+        .select("name price stock isActive activeDeal discription") // include description
         .populate({
             path: "activeDeal",
             select: "discount startDate endDate user"
         })
+        .populate("category", "name") // populate category name if category exists
         .limit(Number(limit))
         .skip((page - 1) * limit)
         .lean();
+        console.log(products, "the products are here");
     const meta = {
         page,
         limit,
@@ -40,6 +44,7 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: "Products fetched successfully",
+        test:"true",
         data: { products },
         meta
     });
@@ -55,6 +60,7 @@ const createProduct = AsyncHandler(async (req, res, next) => {
     console.log(files);
 
     const user = req.user;
+    console.log("the user is here", user);
 
     const productImage = [];
 
@@ -236,7 +242,7 @@ const getProductsByNameOrSlug = AsyncHandler(async (req, res, next) => {
 
     res.status(200).json({
         success: true,
-        message: "Products fetched successfully",
+        message: "Productsss fetched successfully",
         data: products
     });
 });
@@ -249,7 +255,7 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
     }
 
     const data = await Product.find({ user: admin._id }).populate("activeDeal");
-
+    console.log(data, "the data is here");
     if (!data || data.length === 0) {
         return next(new CustomError(404, "No products found for admin"));
     }

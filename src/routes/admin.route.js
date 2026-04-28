@@ -19,7 +19,7 @@ import { updateProductSchema } from "../schemas/updateProduct.js";
 
 const adminRoute = Router();
 
-const uploadImages = imageMulter(5, ["image/png", "image/jpeg", "image/gif", "image/jpg"]);
+const uploadImages = imageMulter(7, ["image/png", "image/jpeg", "image/gif", "image/jpg"]);
 
 adminRoute.use(authMiddleware, allowRoles("admin"));
 //products
