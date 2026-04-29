@@ -66,14 +66,31 @@ adminRoute.get('/orders', async (req, res) => {
     }
 });
 
-adminRoute.put('/orders/:id', async (req, res) => {
+adminRoute.put('/orders/:orderId', async (req, res) => {
     try {
-        const { orderStatus } = req.body;
+        const newStatusNormalized = String(req.body.orderStatus).trim().toLowerCase();
+
+        const allowedStatuses = ["processing", "confirmed", "shipped", "delivered", "cancelled"];
+        if (!allowedStatuses.includes(newStatusNormalized)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid orderStatus. Allowed values: ${allowedStatuses.join(", ")}`
+            });
+        }
+
         const order = await Order.findByIdAndUpdate(
-            req.params.id,
-            { orderStatus },
-            { new: true }
+            req.params.orderId,
+            { $set: { orderStatus: newStatusNormalized } },
+            { new: true, runValidators: true }
         );
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found"
+            });
+        }
+
         res.status(200).json({ success: true, order });
     } catch (error) {
         res.status(500).json({ message: "Error updating status", error });

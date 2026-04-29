@@ -62,7 +62,7 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
       automatic_payment_methods: { enabled: true },
     });
 
-    // 4️⃣ Create Order Record with "pending" payment status
+    // 4️⃣ Create Order Record with "processing" order status
     const order = await Order.create({
       user: userId,
       customerInfo: {
@@ -81,7 +81,7 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
       },
       stripePaymentIntentId: paymentIntent.id,
       paymentStatus: "pending",
-      orderStatus: "pending",
+      orderStatus: "processing",
     });
 
     console.log("✅ Order created with ID:", order._id);

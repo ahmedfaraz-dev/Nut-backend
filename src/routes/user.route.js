@@ -27,7 +27,26 @@ userRouter.route('/my-orders').get(authMiddleware, async (req, res) => {
       .populate('items.product', 'name slug image')
       .sort({ createdAt: -1 });
 
-    if (!orders || orders.length === 0) {
+    const now = Date.now();
+    const cutoffDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+    const ordersVisible = (orders || []).filter(order => {
+      const statusNormalized = String(order.orderStatus ?? "")
+        .trim()
+        .toLowerCase();
+
+      if (["processing", "confirmed", "shipped"].includes(statusNormalized)) {
+        return true;
+      }
+
+      if (["delivered", "cancelled"].includes(statusNormalized)) {
+        return order.createdAt && order.createdAt >= cutoffDate;
+      }
+
+      return false;
+    });
+
+    if (ordersVisible.length === 0) {
       return res.status(200).json({
         success: true,
         message: "No orders found",
@@ -38,13 +57,13 @@ userRouter.route('/my-orders').get(authMiddleware, async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Orders retrieved successfully",
-      totalOrders: orders.length,
-      orders: orders.map(order => ({
+      totalOrders: ordersVisible.length,
+      orders: ordersVisible.map(order => ({
         _id: order._id,
         items: order.items,
         totalAmount: order.totalAmount,
         currency: order.currency,
-        orderStatus: order.orderStatus,
+        orderStatus: String(order.orderStatus ?? "").trim().toLowerCase(),
         paymentStatus: order.paymentStatus,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,

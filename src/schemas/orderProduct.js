@@ -14,7 +14,7 @@ export const createOrderSchema = z.object({
     iteam: z.array(orderIteamSchema),
     totalAmount: z.number().min(0, "Total amount must be grater then or equal to zero"),
     addressSnapshort: addressSchema,
-    orderStatus: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]),
+    orderStatus: z.enum(["processing", "confirmed", "shipped", "delivered", "cancelled"]),
     paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]),
     
 
