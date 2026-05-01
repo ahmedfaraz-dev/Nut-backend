@@ -7,6 +7,7 @@ import { imageMulter} from "../middlewares/multerImage.middleware.js";
 import { getProductsByNameOrSlug } from "../controllers/product.controller.js";
 import { getProduct } from "../controllers/product.controller.js";
 import Order from "../models/orderItems.model.js";
+import { getAllCategories } from "../controllers/category.controller.js";
 const userRouter = Router();
 
 const uploadImage = imageMulter(5, ["image/png" , "image/jpeg" , "image/gif", "image/jpg"]);
@@ -17,6 +18,8 @@ userRouter.route('/add-profile').post(authMiddleware ,uploadImage.single("image"
 userRouter.route('/get-user').get(authMiddleware, currentUser);
 userRouter.route('/products').get(getProductsByNameOrSlug);
 userRouter.route('/productss/:productId').get(authMiddleware, getProduct);
+
+userRouter.route('/categories').get(getAllCategories)
 
 // 📦 Get Order History
 userRouter.route('/my-orders').get(authMiddleware, async (req, res) => {
