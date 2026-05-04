@@ -30,11 +30,6 @@ const userSchema = new Schema({
         },
         default: null
     },
-    contactNumber: {
-        type: String,
-        required: true,
-        trim: true
-    },
     isVerified: {
         type: Boolean,
         default: false
@@ -64,14 +59,7 @@ const userSchema = new Schema({
     verificationTokenExpiry: {
         type: Date,
         default: null
-    },
-    addresses: [
-        {
-            city: { type: String, required: true, trim: true },
-            country: { type: String, required: true, trim: true },
-            zip: { type: Number, required: true, trim: true }
-        }
-    ]
+    }
 }, { timestamps: true });
 
 

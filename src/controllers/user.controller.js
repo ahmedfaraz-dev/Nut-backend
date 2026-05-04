@@ -15,7 +15,9 @@ import { cloudinary } from "../config/cloudniry.config.js";
 //@controller for user registration
 const registerUser = AsyncHandler(async (req, res, next) => {
 
-    const { name, email, password, contactNumber, addresses } = req.body;
+    const { name, email, password } = req.body;
+    console.log(name, email, password);
+    
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -25,7 +27,7 @@ const registerUser = AsyncHandler(async (req, res, next) => {
     const verificationTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 mints
 
     const user = await User.create({
-        name, email, password, contactNumber, addresses, verificationToken, verificationTokenExpiry,
+        name, email, password, verificationToken, verificationTokenExpiry,
     });
 
 
@@ -134,10 +136,8 @@ const currentUser = AsyncHandler(async (req, res, next) => {
         message: true,
         name: user.name,
         email: user.email,
-        contactNumber: user.contactNumber,
         isVerified: user.isVerified,
         role: user.role,
-        addresses: user.addresses,
         avatar: user.avatar
     })
 });
