@@ -8,8 +8,8 @@ import { fileTypeFromBuffer } from "file-type";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import User from "../models/user.models.js";
 import { ensureSlug } from "../utils/makingSlug.js";
-import { success } from "zod";
-
+import { Rating } from "../models/rating.model.js";
+import Order from "../models/orderItems.model.js";
 
 
 
@@ -33,7 +33,7 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
         .limit(Number(limit))
         .skip((page - 1) * limit)
         .lean();
-        console.log(products, "the products are here");
+    console.log(products, "the products are here");
     const meta = {
         page,
         limit,
@@ -44,7 +44,7 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: "Products fetched successfully",
-        test:"true",
+        test: "true",
         data: { products },
         meta
     });
@@ -283,6 +283,61 @@ const getAdminStats = async (req, res, next) => {
     })
 };
 
+//@rating product 
+
+const ratingProduct = AsyncHandler(async (req, res, next) => {
+    const { rating, title, comment } = req.body;
+    const { userId, productId } = req.params;
+    if (!userId || !productId) {
+        return next(CustomError(400, "user id and product are missing in params"))
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid()) {
+        return next(CustomError(422, "the user id or porduct id is not valid"))
+    }
+
+    const user = await User.find({
+        _id: userId,
+        isVerified: true
+    })
+
+    if (!user) {
+        return next(CustomError(403, "User is not verifide pelease verify your email first"));
+    }
+
+    const product = await Product.find({
+        _id: productId,
+        isActive: true,
+    })
+
+    if (!product) {
+        return next(CustomError(403, "no product is found or product is not active"));
+    }
+
+    const confirmedOrders = await Order.find({
+        user: userId,
+        paymentStatus: "paid",
+        orderStatus: "delivered"
+    });
+    if (! confirmedOrders) {
+        return next( CustomError( 403, "You can only review after your order is delivered"));
+    }
+
+    const updateRating = await Rating.create({
+        productId,
+        userId,
+        rating,
+        title,
+        comment,
+        isVerifiedPurchase: true
+    })
+
+    res.status(201).json({
+        success: true,
+        message: "rating successfully"
+    })
+});
 
 
-export { createProduct, getAllAdminProducts, editProduct, deleteProduct, getProduct, getAdminStats, getAllProducts, getProductsByNameOrSlug }
+
+export { createProduct, getAllAdminProducts, editProduct, deleteProduct, getProduct, getAdminStats, getAllProducts, getProductsByNameOrSlug, ratingProduct }
