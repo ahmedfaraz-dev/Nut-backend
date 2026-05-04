@@ -1,5 +1,5 @@
-import AsyncHandler from "../handlers/AsyncHandler";
-import Order from "../models/orderItems.model";
+import AsyncHandler from "../handlers/AsyncHandler.js";
+import Order from "../models/orderItems.model.js";
 const userOrder = AsyncHandler( async ( req, res, next ) => {
      try {
     const userId = req.user._id;

@@ -6,7 +6,6 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { imageMulter} from "../middlewares/multerImage.middleware.js";
 import { getProductsByNameOrSlug } from "../controllers/product.controller.js";
 import { getProduct } from "../controllers/product.controller.js";
-import Order from "../models/orderItems.model.js";
 import { getAllCategories } from "../controllers/category.controller.js";
 import { userOrder } from "../controllers/order.controller.js";
 const userRouter = Router();
