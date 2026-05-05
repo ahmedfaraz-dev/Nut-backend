@@ -257,7 +257,6 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
     }
 
     const data = await Product.find({ user: admin._id }).populate("activeDeal");
-    console.log(data, "the data is here");
     if (!data || data.length === 0) {
         return next(new CustomError(404, "No products found for admin"));
     }
