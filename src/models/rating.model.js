@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { maxLength, trim } from "zod";
 
 const ratingSchema = new Schema({
   productId: {
@@ -22,13 +23,12 @@ const ratingSchema = new Schema({
   title: {
     type: String,
     trim: true,
+    maxLength: 20
   },
   comment: {
     type: String,
-  },
-  isVerifiedPurchase: {
-    type: Boolean,
-    default: false,
+    trim: true,
+    maxLength: 100
   }
 }, { timestamps: true });
 

@@ -221,6 +221,8 @@ const getProduct = AsyncHandler(async (req, res, next) => {
     });
 
 });
+
+
 const getProductsByNameOrSlug = AsyncHandler(async (req, res, next) => {
     const { name, slug } = req.query;
     let query = { isActive: true };
@@ -288,30 +290,39 @@ const getAdminStats = async (req, res, next) => {
 const ratingProduct = AsyncHandler(async (req, res, next) => {
     const { rating, title, comment } = req.body;
     const { userId, productId } = req.params;
+
     if (!userId || !productId) {
-        return next(CustomError(400, "user id and product are missing in params"))
+        return next(CustomError(400, "User ID and Product ID are required"));
     }
 
-    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid()) {
-        return next(CustomError(422, "the user id or porduct id is not valid"))
+    if (
+        !mongoose.Types.ObjectId.isValid(userId) ||
+        !mongoose.Types.ObjectId.isValid(productId)
+    ) {
+        return next(CustomError(422, "Invalid userId or productId"));
     }
 
-    const user = await User.find({
+    
+    if (rating < 1 || rating > 5) {
+        return next(CustomError(400, "Rating must be between 1 and 5"));
+    }
+
+    const user = await User.findOne({
         _id: userId,
         isVerified: true
-    })
+    });
 
     if (!user) {
-        return next(CustomError(403, "User is not verifide pelease verify your email first"));
+        return next(CustomError(403, "User not verified. Please verify your email first"));
     }
 
-    const product = await Product.find({
+    const product = await Product.findOne({
         _id: productId,
-        isActive: true,
-    })
+        isActive: true
+    });
 
     if (!product) {
-        return next(CustomError(403, "no product is found or product is not active"));
+        return next(CustomError(403, "Product not found or inactive"));
     }
 
     const confirmedOrders = await Order.find({
@@ -319,23 +330,69 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         paymentStatus: "paid",
         orderStatus: "delivered"
     });
-    if (! confirmedOrders) {
-        return next( CustomError( 403, "You can only review after your order is delivered"));
+
+    if (!confirmedOrders || confirmedOrders.length === 0) {
+        return next(CustomError(403, "You can only review after your order is delivered"));
     }
 
-    const updateRating = await Rating.create({
-        productId,
-        userId,
-        rating,
-        title,
-        comment,
-        isVerifiedPurchase: true
-    })
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    res.status(201).json({
-        success: true,
-        message: "rating successfully"
-    })
+    try {
+
+        await Rating.create(
+            [
+                {
+                    productId,
+                    userId,
+                    rating,
+                    title,
+                    comment
+                }
+            ],
+            { session }
+        );
+
+        await Product.updateOne(
+            { _id: productId },
+            [
+                {
+                    $set: {
+                        totalRatings: { $add: ["$totalRatings", 1] },
+                        ratingSum: { $add: ["$ratingSum", rating] },
+
+                        [`ratingBreakdown.${rating}`]: {
+                            $add: [
+                                { $ifNull: [`$ratingBreakdown.${rating}`, 0] },
+                                1
+                            ]
+                        }
+                    }
+                },
+                {
+                    $set: {
+                        averageRating: {
+                            $divide: ["$ratingSum", "$totalRatings"]
+                        }
+                    }
+                }
+            ],
+            { session }
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.status(201).json({
+            success: true,
+            message: "Rating submitted successfully"
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(error);
+    }
 });
 
 
