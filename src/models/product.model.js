@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { number } from "zod";
 
 
 const productSchema = new Schema({
@@ -13,7 +14,7 @@ const productSchema = new Schema({
         type: Number,
         required: true
     },
-    images:{
+    images: {
         type: [String],
         required: true
     },
@@ -50,6 +51,25 @@ const productSchema = new Schema({
         unique: true,
         lowercase: true,
         trim: true
+    },
+    averageRating: {
+        type: Number,
+        default: 0
+    },
+    totalRatings: {
+        type: Number,
+        default: 0
+    },
+    ratingSum: {
+        type: Number,
+        default: 0
+    },
+    ratingBreakdown: {
+        "5": { type: Number, default: 0 },
+        "4": { type: Number, default: 0 },
+        "3": { type: Number, default: 0 },
+        "2": { type: Number, default: 0 },
+        "1": { type: Number, default: 0 }
     }
 }, { timestamps: true })
 
@@ -57,7 +77,6 @@ productSchema.index({ name: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ user: 1 });
 productSchema.index({ price: 1 });
-productSchema.index({ activeDeal: 1});
-productSchema.index({isActive: 1})
-productSchema.index({slug: 1});
+productSchema.index({ activeDeal: 1 });
+productSchema.index({ isActive: 1 });
 export const Product = model("Product", productSchema);
