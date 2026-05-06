@@ -1,37 +1,37 @@
 import AsyncHandler from "../handlers/AsyncHandler.js";
-import CustomError  from "../handlers/CustomError.js";
+import CustomError from "../handlers/CustomError.js";
 import User from "../models/user.models.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 
 
 
 
-const loginUser = AsyncHandler(async(req, res, next)=>{
-    
-    const {email, password} = req.body;
-    
-    const user = await User.findOne({email}).select("+password");
-    
+const loginUser = AsyncHandler(async (req, res, next) => {
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email }).select("+password");
+
     // console.log(user);
-    
-    if(!user){
+
+    if (!user) {
         return next(new CustomError(404, "user not found with this email"));
     }
-    if(!user.isVerified){
+    if (!user.isVerified) {
         return next(new CustomError(403, "Account not verified. Please verify your email."))
     }
-    
+
     const isPasswordMatched = await user.comparePassword(password);
 
-    if(!isPasswordMatched){
-        return next( new CustomError(401, "invalid credentials"));
+    if (!isPasswordMatched) {
+        return next(new CustomError(401, "invalid credentials"));
     }
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
-    
-    user.refreshToken.push({token: refreshToken})
+
+    user.refreshToken.push({ token: refreshToken })
     const updatedUser = await user.save();
-    if(!updatedUser){
+    if (!updatedUser) {
         return next(new CustomError(500, "error while saving refresh token"));
     };
 
@@ -46,7 +46,7 @@ const loginUser = AsyncHandler(async(req, res, next)=>{
         accessToken,
         data: user
     })
-    
+
 });
 
 const googleAuthCallback = AsyncHandler(async (req, res, next) => {
@@ -69,9 +69,16 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
         maxAge: 15 * 24 * 60 * 60 * 1000
     });
 
-    
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+    });
+
+
     return res.redirect(
-        `${process.env.CLIENT_URL}/auth/google/success?token=${accessToken}`
+        `${process.env.CLIENT_URL}/auth/google/callback`
+
     );
 });
 
