@@ -38,7 +38,7 @@ const loginUser = AsyncHandler(async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "none",
         maxAge: 15 * 24 * 60 * 60 * 1000 // 15 days
     }).status(200).json({
         success: true,
