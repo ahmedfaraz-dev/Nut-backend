@@ -19,7 +19,9 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        required: true,
+        required: function() {
+            return this.provider === "local";
+        },
         minLength: [8, "Password must be at least 8 characters long"],
         select: false
     },
@@ -59,6 +61,17 @@ const userSchema = new Schema({
     verificationTokenExpiry: {
         type: Date,
         default: null
+    },
+    googleId: {
+        type: String,
+        default: null,
+        unique: true,
+        sparse: true
+    },
+    provider: {
+        type: String,
+        enum: ["local", "google"],
+        default: "local"
     }
 }, { timestamps: true });
 
