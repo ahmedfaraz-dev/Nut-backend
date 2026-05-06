@@ -10,7 +10,13 @@ authRouter.route('/login').post(validateZodSchema(userLoginSchema), loginUser);
 
 authRouter.route('/google').get(passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-authRouter.route('/google/callback').get(passport.authenticate('google', {session: false, failureRedirect:`${process.env.CLIENT_URL}/api/v1/auth/google/failed` }), googleAuthCallback);
+authRouter.route('/google/callback').get(
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect: `${process.env.CLIENT_URL}/login?error=google`
+  }),
+  googleAuthCallback
+);
   
 export {authRouter}
 
