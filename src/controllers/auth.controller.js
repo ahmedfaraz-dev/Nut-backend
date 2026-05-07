@@ -86,6 +86,8 @@ const logoutUser = AsyncHandler(async (req, res, next) => {
     
     const user = req.user;
 
+    user.refreshToken =[];
+
     await user.save({ validateBeforeSave: false });
 
     res.clearCookie("refreshToken", {
