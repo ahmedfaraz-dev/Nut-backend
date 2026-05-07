@@ -3,6 +3,7 @@ import { validateZodSchema } from "../middlewares/validateZodSchema.middleware.j
 import { userLoginSchema } from "../schemas/userLogin.js";
 import { loginUser, googleAuthCallback, googleAuthFailed, logoutUser } from "../controllers/auth.controller.js";
 import passport from "../config/passport.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const authRouter = Router();
 
@@ -10,7 +11,7 @@ authRouter.route('/login').post(validateZodSchema(userLoginSchema), loginUser);
 
 authRouter.route('/google').get(passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-authRouter.route('/logout').post( authRouter , logoutUser ) 
+authRouter.route('/logout').post( authMiddleware , logoutUser ) 
 
 authRouter.route('/google/callback').get(
   passport.authenticate('google', {
