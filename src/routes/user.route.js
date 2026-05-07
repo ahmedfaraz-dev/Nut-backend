@@ -17,7 +17,7 @@ userRouter.route('/verify-email/:token').get( verifyEmail);
 userRouter.route('/add-profile').post(authMiddleware ,uploadImage.single("image"), addProfile);
 userRouter.route('/get-user').get(authMiddleware, currentUser);
 userRouter.route('/products').get(getProductsByNameOrSlug);
-userRouter.route('/productss/:productId').get(authMiddleware, getProduct);
+userRouter.route('/productss/:productId').get( getProduct);
 userRouter.route('/categories').get( getAllCategories);
 
 // 📦 Get Order History
