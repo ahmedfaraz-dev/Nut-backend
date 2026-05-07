@@ -83,20 +83,21 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
 });
 
 const logoutUser = AsyncHandler(async (req, res, next) => {
+    
     const user = req.user;
-    user.refreshToken = [];
 
     await user.save({ validateBeforeSave: false });
 
     res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: false,
-        sameSite: "strict"
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
     });
 
-    res.status(200).json({
+    return res.status(200).json({
         success: true,
-        message: "User logged out successfully"
+        message: "Logged out successfully",
     });
 
 });
