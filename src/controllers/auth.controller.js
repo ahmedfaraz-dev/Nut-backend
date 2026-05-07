@@ -85,11 +85,14 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
 const logoutUser = AsyncHandler(async (req, res, next) => {
     
     const user = req.user;
+    console.log("logout is here");
 
     user.refreshToken =[];
-
+    console.log(user.refreshToken);
+    
     await user.save({ validateBeforeSave: false });
-
+    console.log("all ok here");
+    
     res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
