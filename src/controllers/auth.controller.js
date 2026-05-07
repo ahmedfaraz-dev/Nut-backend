@@ -82,6 +82,25 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
     );
 });
 
+const logoutUser = AsyncHandler(async (req, res, next) => {
+    const user = req.user;
+    user.refreshToken = [];
+
+    await user.save({ validateBeforeSave: false });
+
+    res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict"
+    });
+
+    res.status(200).json({
+        success: true,
+        message: "User logged out successfully"
+    });
+
+});
+
 const googleAuthFailed = AsyncHandler(async (req, res) => {
     res.status(401).json({
         success: false,
@@ -89,4 +108,4 @@ const googleAuthFailed = AsyncHandler(async (req, res) => {
     });
 });
 
-export { loginUser, googleAuthCallback, googleAuthFailed };
+export { loginUser, googleAuthCallback, googleAuthFailed, logoutUser };
