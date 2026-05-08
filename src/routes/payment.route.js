@@ -6,16 +6,73 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const SUPPORTED_CURRENCIES = new Set(["usd", "eur", "gbp", "inr", "pkr"]);
+const BASE_CURRENCY = "pkr";
+const CURRENCY_CACHE_TTL_MS = 30 * 60 * 1000;
+
+let currencyRatesCache = {
+  rates: null,
+  expiresAt: 0,
+};
+
+const getExchangeRates = async () => {
+  const now = Date.now();
+  if (currencyRatesCache.rates && now < currencyRatesCache.expiresAt) {
+    return currencyRatesCache.rates;
+  }
+
+  if (!process.env.CURRENCY_API_KEY) {
+    throw new Error("Currency API key is missing");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(
+      `https://v6.exchangerate-api.com/v6/${process.env.CURRENCY_API_KEY}/latest/${BASE_CURRENCY.toUpperCase()}`,
+      { signal: controller.signal }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Currency API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rates = data?.conversion_rates;
+
+    if (!rates || typeof rates !== "object") {
+      throw new Error("Invalid response from currency API");
+    }
+
+    currencyRatesCache = {
+      rates,
+      expiresAt: now + CURRENCY_CACHE_TTL_MS,
+    };
+
+    return rates;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 router.post("/create-payment-intent", authMiddleware, async (req, res) => {
   try {
-    const { cartItems, customerData } = req.body;
+    const { cartItems, customerData, currency } = req.body;
     const userId = req.user._id;
+    const requestedCurrency = String(currency || BASE_CURRENCY).toLowerCase();
 
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Cart items are required",
+      });
+    }
+
+    if (!SUPPORTED_CURRENCIES.has(requestedCurrency)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unsupported currency",
       });
     }
 
@@ -48,12 +105,27 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
 
     // 2️⃣ Add Delivery Charges
     const deliveryCharges = 250;
-    const finalAmount = totalItemsPrice + deliveryCharges;
+    const finalAmountInPkr = totalItemsPrice + deliveryCharges;
+    let finalAmount = finalAmountInPkr;
+
+    if (requestedCurrency !== BASE_CURRENCY) {
+      const rates = await getExchangeRates();
+      const conversionRate = rates[requestedCurrency.toUpperCase()];
+
+      if (!conversionRate) {
+        return res.status(502).json({
+          success: false,
+          message: "Unable to convert amount for selected currency",
+        });
+      }
+
+      finalAmount = finalAmountInPkr * conversionRate;
+    }
 
     // 3️⃣ Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(finalAmount * 100), // Stripe expects amounts in cents/paisas
-      currency: "pkr",
+      currency: requestedCurrency,
       metadata: {
         customerEmail: customerData?.email,
         customerName: `${customerData?.firstName} ${customerData?.lastName}`,
@@ -72,7 +144,7 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
       },
       items: orderItems,
       totalAmount: finalAmount,
-      currency: "pkr",
+      currency: requestedCurrency,
       addressSnapshot: {
         address: customerData?.address || "N/A",
         city: customerData?.city || "N/A",

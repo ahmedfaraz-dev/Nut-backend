@@ -31,9 +31,15 @@ passport.use(
           return done(null, user);
         }
 
+        let name;
+        if (profile.name) {
+          name = `${profile.name.givenName || ''} ${profile.name.familyName || ''}`.trim();
+        } else {
+          name = profile.displayName || 'No Name';
+        }
         const newUser = await User.create({
           googleId: profile.id,
-          name: `${profile.name.givenName} ${profile.name.familyName}`,
+          name: name,
           email: profile.emails?.[0]?.value,
           provider: 'google',
           isVerified: true,
