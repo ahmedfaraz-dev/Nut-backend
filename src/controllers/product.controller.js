@@ -208,7 +208,7 @@ const getProduct = AsyncHandler(async (req, res, next) => {
 
 
     const product = await Product.findById(id)
-        .select("_id name price stock isActive activeDeal images discription slug category")
+        .select("_id name price stock isActive activeDeal images discription slug category averageRating totalRatings ratingSum ratingBreakdown")
         .populate("activeDeal");
 
     if (!product) {
@@ -290,6 +290,12 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     const { rating, title, comment } = req.body;
     const { userId, productId } = req.params;
 
+    console.log("rating", rating);
+    console.log("title", title);
+    console.log("comment", comment);
+    console.log("userId", userId);
+    console.log("productId", productId);
+
     if (!userId || !productId) {
         return next(CustomError(400, "User ID and Product ID are required"));
     }
@@ -352,30 +358,28 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
             { session }
         );
 
+        const product = await Product.findOne({ _id: productId }).session(session);
+        if (!product) {
+            await session.abortTransaction();
+            session.endSession();
+            return next(new CustomError(404, "Product not found"));
+        }
+
+        const newTotalRatings = (product.totalRatings || 0) + 1;
+        const newRatingSum = (product.ratingSum || 0) + rating;
+        const newAverageRating = newRatingSum / newTotalRatings;
+        const currentBreakdown = product.ratingBreakdown?.get(String(rating)) || 0;
+
         await Product.updateOne(
             { _id: productId },
-            [
-                {
-                    $set: {
-                        totalRatings: { $add: ["$totalRatings", 1] },
-                        ratingSum: { $add: ["$ratingSum", rating] },
-
-                        [`ratingBreakdown.${rating}`]: {
-                            $add: [
-                                { $ifNull: [`$ratingBreakdown.${rating}`, 0] },
-                                1
-                            ]
-                        }
-                    }
-                },
-                {
-                    $set: {
-                        averageRating: {
-                            $divide: ["$ratingSum", "$totalRatings"]
-                        }
-                    }
+            {
+                $set: {
+                    totalRatings: newTotalRatings,
+                    ratingSum: newRatingSum,
+                    averageRating: newAverageRating,
+                    [`ratingBreakdown.${rating}`]: currentBreakdown + 1,
                 }
-            ],
+            },
             { session }
         );
 
@@ -396,4 +400,22 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
 
 
 
-export { createProduct, getAllAdminProducts, editProduct, deleteProduct, getProduct, getAdminStats, getAllProducts, getProductsByNameOrSlug, ratingProduct }
+const getProductReviews = AsyncHandler(async (req, res, next) => {
+    const { productId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return next(new CustomError(400, "Invalid product ID"));
+    }
+
+    const reviews = await Rating.find({ productId })
+        .populate("userId", "name avatar")
+        .sort({ createdAt: -1 })
+        .lean();
+
+    res.status(200).json({
+        success: true,
+        reviews,
+    });
+});
+
+export { createProduct, getAllAdminProducts, editProduct, deleteProduct, getProduct, getAdminStats, getAllProducts, getProductsByNameOrSlug, ratingProduct, getProductReviews }
