@@ -60,7 +60,7 @@ app.use(cors(corsOptions));
 // appling the rate limiter middleware
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes,
-    limit: 500, // limit each IP to 500 requests per windowMs
+    limit: 1000, // limit each IP to 100 requests per windowMs
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     standardHeaders: true, // Enable the `RateLimit-*` headers;
 
