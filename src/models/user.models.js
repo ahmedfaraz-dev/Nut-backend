@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import bcrypt from "bcryptjs";
+import { email } from "zod";
 
 
 const userSchema = new Schema({
@@ -86,6 +87,8 @@ userSchema.methods.comparePassword = async function (password) {
     return isPasswordCorrect;
 }
 
+
 const User = model("User", userSchema);
+
 
 export default User;
