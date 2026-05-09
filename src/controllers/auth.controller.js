@@ -111,4 +111,42 @@ const googleAuthFailed = AsyncHandler(async (req, res) => {
     });
 });
 
-export { loginUser, googleAuthCallback, googleAuthFailed, logoutUser };
+//@ change password
+
+const changePassword = AsyncHandler(async (req, res, next) => {
+
+    const { oldPassword, newPassword } = req.body;
+
+    const email = req.user.email;
+    
+    if( oldPassword === newPassword){
+        return next( new CustomError (400, "New password must be different from the current password."))
+    }
+    const updatingUser = await User.findOne({ email }).select("+password");
+
+    if (!updatingUser) {
+        return next(new CustomError(404, "User not found"));
+    };
+
+    const isPasswordMatch = await updatingUser
+        .comparePassword(oldPassword);
+
+    if (!isPasswordMatch) {
+        return next(
+            new CustomError(401, "Invalid credentials")
+        );
+    }
+
+    updatingUser.password = newPassword;
+
+    await updatingUser.save();
+
+    return res.status(200).json({
+        success: true,
+        message: "Password updated successfully"
+    });
+
+});
+
+
+export { loginUser, googleAuthCallback, googleAuthFailed, logoutUser, changePassword };

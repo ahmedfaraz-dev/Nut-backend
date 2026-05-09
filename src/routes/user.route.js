@@ -8,6 +8,9 @@ import { getProductsByNameOrSlug } from "../controllers/product.controller.js";
 import { getProduct } from "../controllers/product.controller.js";
 import { getAllCategories } from "../controllers/category.controller.js";
 import { userOrder } from "../controllers/order.controller.js";
+
+
+
 const userRouter = Router();
 
 const uploadImage = imageMulter(5, ["image/png" , "image/jpeg" , "image/gif", "image/jpg"]);

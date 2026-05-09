@@ -17,7 +17,7 @@ const registerUser = AsyncHandler(async (req, res, next) => {
 
     const { name, email, password } = req.body;
     console.log(name, email, password);
-    
+
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -77,7 +77,7 @@ const verifyEmail = AsyncHandler(async (req, res, next) => {
 const addProfile = AsyncHandler(async (req, res, next) => {
     const file = req.file;
     const user = req.user;
-    
+
     const detectedType = await fileTypeFromBuffer(file.buffer);
 
     if (!detectedType || !["image/jpeg", "image/png"].includes(detectedType.mime)) {
@@ -112,7 +112,7 @@ const addProfile = AsyncHandler(async (req, res, next) => {
             },
         },
         { returnDocument: 'after', runValidators: true }
-        
+
     );
 
     if (!updatedUser) {
