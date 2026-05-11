@@ -290,12 +290,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     const { rating, title, comment } = req.body;
     const { userId, productId } = req.params;
 
-    console.log("rating", rating);
-    console.log("title", title);
-    console.log("comment", comment);
-    console.log("userId", userId);
-    console.log("productId", productId);
-
+    // ---------------- VALIDATION ----------------
     if (!userId || !productId) {
         return next(CustomError(400, "User ID and Product ID are required"));
     }
@@ -307,88 +302,113 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         return next(CustomError(422, "Invalid userId or productId"));
     }
 
-    
     if (rating < 1 || rating > 5) {
         return next(CustomError(400, "Rating must be between 1 and 5"));
     }
 
+    // ---------------- USER CHECK ----------------
     const user = await User.findOne({
         _id: userId,
         isVerified: true
     });
 
     if (!user) {
-        return next(CustomError(403, "User not verified. Please verify your email first"));
+        return next(CustomError(403, "User not verified"));
     }
 
+    // ---------------- PRODUCT CHECK ----------------
     const product = await Product.findOne({
         _id: productId,
         isActive: true
     });
 
     if (!product) {
-        return next(CustomError(403, "Product not found or inactive"));
+        return next(CustomError(404, "Product not found"));
     }
 
-    const confirmedOrders = await Order.find({
+    // ---------------- ORDER VALIDATION ----------------
+    const hasPurchased = await Order.exists({
         user: userId,
         paymentStatus: "paid",
-        orderStatus: "delivered"
+        orderStatus: "delivered",
+        "items.product": productId
     });
 
-    if (!confirmedOrders || confirmedOrders.length === 0) {
-        return next(CustomError(403, "You can only review after your order is delivered"));
+    if (!hasPurchased) {
+        return next(
+            CustomError(403, "You can only review purchased products")
+        );
     }
 
     const session = await mongoose.startSession();
-    session.startTransaction();
 
     try {
+        session.startTransaction();
 
-        await Rating.create(
-            [
-                {
-                    productId,
-                    userId,
+        // ---------------- ATOMIC UPSERT REVIEW ----------------
+        const oldReview = await Rating.findOneAndUpdate(
+            { userId, productId },
+            {
+                $set: {
                     rating,
                     title,
                     comment
                 }
-            ],
-            { session }
+            },
+            {
+                new: true,
+                upsert: true,
+                session
+            }
         );
 
-        const product = await Product.findOne({ _id: productId }).session(session);
-        if (!product) {
-            await session.abortTransaction();
-            session.endSession();
-            return next(new CustomError(404, "Product not found"));
+        // ---------------- PRODUCT STATS UPDATE ----------------
+        const isNewReview = oldReview.createdAt.getTime() === oldReview.updatedAt.getTime();
+
+        let updateQuery;
+
+        if (isNewReview) {
+            // NEW REVIEW
+            updateQuery = {
+                $inc: {
+                    totalRatings: 1,
+                    ratingSum: rating,
+                    [`ratingBreakdown.${rating}`]: 1
+                }
+            };
+        } else {
+            // UPDATED REVIEW
+            const previousRating = oldReview.rating;
+
+            updateQuery = {
+                $inc: {
+                    ratingSum: rating - previousRating,
+                    [`ratingBreakdown.${previousRating}`]: -1,
+                    [`ratingBreakdown.${rating}`]: 1
+                }
+            };
         }
 
-        const newTotalRatings = (product.totalRatings || 0) + 1;
-        const newRatingSum = (product.ratingSum || 0) + rating;
-        const newAverageRating = newRatingSum / newTotalRatings;
-        const currentBreakdown = product.ratingBreakdown?.get(String(rating)) || 0;
-
-        await Product.updateOne(
-            { _id: productId },
-            {
-                $set: {
-                    totalRatings: newTotalRatings,
-                    ratingSum: newRatingSum,
-                    averageRating: newAverageRating,
-                    [`ratingBreakdown.${rating}`]: currentBreakdown + 1,
-                }
-            },
-            { session }
+        const updatedProduct = await Product.findByIdAndUpdate(
+            productId,
+            updateQuery,
+            { session, new: true }
         );
+
+        // Recalculate average safely
+        updatedProduct.averageRating =
+            updatedProduct.ratingSum / updatedProduct.totalRatings;
+
+        await updatedProduct.save({ session });
 
         await session.commitTransaction();
         session.endSession();
 
-        return res.status(201).json({
+        return res.status(200).json({
             success: true,
-            message: "Rating submitted successfully"
+            message: isNewReview
+                ? "Rating created successfully"
+                : "Rating updated successfully"
         });
 
     } catch (error) {
