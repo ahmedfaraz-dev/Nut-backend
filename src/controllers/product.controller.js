@@ -345,8 +345,17 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     try {
         session.startTransaction();
 
-        // ---------------- ATOMIC UPSERT REVIEW ----------------
-        const oldReview = await Rating.findOneAndUpdate(
+        // ---------------- CHECK EXISTING REVIEW ----------------
+        const existingReview = await Rating.findOne({
+            userId,
+            productId
+        }).session(session);
+
+        const isNewReview = !existingReview;
+        const previousRating = existingReview?.rating;
+
+        // ---------------- UPSERT REVIEW ----------------
+        const ratingDoc = await Rating.findOneAndUpdate(
             { userId, productId },
             {
                 $set: {
@@ -363,12 +372,9 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         );
 
         // ---------------- PRODUCT STATS UPDATE ----------------
-        const isNewReview = oldReview.createdAt.getTime() === oldReview.updatedAt.getTime();
-
         let updateQuery;
 
         if (isNewReview) {
-            // NEW REVIEW
             updateQuery = {
                 $inc: {
                     totalRatings: 1,
@@ -377,9 +383,6 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
                 }
             };
         } else {
-            // UPDATED REVIEW
-            const previousRating = oldReview.rating;
-
             updateQuery = {
                 $inc: {
                     ratingSum: rating - previousRating,
@@ -392,7 +395,11 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
             updateQuery,
-            { session, new: true , runValidators: false  }
+            {
+                session,
+                new: true,
+                runValidators: false
+            }
         );
 
         // Recalculate average safely
@@ -417,7 +424,6 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         return next(error);
     }
 });
-
 
 
 const getProductReviews = AsyncHandler(async (req, res, next) => {
