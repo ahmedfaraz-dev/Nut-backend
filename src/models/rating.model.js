@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { maxLength, trim } from "zod";
 
 const ratingSchema = new Schema({
   productId: {
@@ -32,6 +33,6 @@ const ratingSchema = new Schema({
 }, { timestamps: true });
 
 
-ratingSchema.index({ userId: 1, productId: 1 });
+ratingSchema.index({ userId: 1, productId: 1 }, { unique: true });
 
 export const Rating =  model("Rating", ratingSchema);
