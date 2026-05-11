@@ -392,7 +392,8 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
             updateQuery,
-            { session, new: true }
+            { session, new: true , runValidators:flase
+            }
         );
 
         // Recalculate average safely
