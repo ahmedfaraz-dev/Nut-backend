@@ -1,6 +1,5 @@
-import mongoose, { Schema, model } from "mongoose";
+import { Schema, model } from "mongoose";
 import bcrypt from "bcryptjs";
-import { email } from "zod";
 
 
 const userSchema = new Schema({
