@@ -302,10 +302,6 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         return next(CustomError(422, "Invalid userId or productId"));
     }
 
-    if (rating < 1 || rating > 5) {
-        return next(CustomError(400, "Rating must be between 1 and 5"));
-    }
-
     // ---------------- USER CHECK ----------------
     const user = await User.findOne({
         _id: userId,
@@ -403,10 +399,14 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         );
 
         // Recalculate average safely
-        updatedProduct.averageRating =
+        const averageRating =
             updatedProduct.ratingSum / updatedProduct.totalRatings;
 
-        await updatedProduct.save({ session });
+        await Product.updateOne(
+            { _id: productId },
+            { $set: { averageRating } },
+            { session }
+        );
 
         await session.commitTransaction();
         session.endSession();
