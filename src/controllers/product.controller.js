@@ -292,14 +292,14 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
 
     // ---------------- VALIDATION ----------------
     if (!userId || !productId) {
-        return next(CustomError(400, "User ID and Product ID are required"));
+        return next(new CustomError(400, "User ID and Product ID are required"));
     }
 
     if (
         !mongoose.Types.ObjectId.isValid(userId) ||
         !mongoose.Types.ObjectId.isValid(productId)
     ) {
-        return next(CustomError(422, "Invalid userId or productId"));
+        return next(new CustomError(422, "Invalid userId or productId"));
     }
 
     // ---------------- USER CHECK ----------------
@@ -309,7 +309,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     });
 
     if (!user) {
-        return next(CustomError(403, "User not verified"));
+        return next(new CustomError(403, "User not verified"));
     }
 
     // ---------------- PRODUCT CHECK ----------------
@@ -319,7 +319,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     });
 
     if (!product) {
-        return next(CustomError(404, "Product not found"));
+        return next(new CustomError(404, "Product not found"));
     }
 
     // ---------------- ORDER VALIDATION ----------------
@@ -332,7 +332,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
 
     if (!hasPurchased) {
         return next(
-            CustomError(403, "You can only review purchased products")
+            new CustomError(403, "You can only review purchased products")
         );
     }
 
