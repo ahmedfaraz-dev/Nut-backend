@@ -155,13 +155,13 @@ const createProduct = AsyncHandler(async (req, res, next) => {
 
 const editProduct = AsyncHandler(async (req, res, next) => {
     const productId = req.params.productId;
-    const { name, price, stoke, isActive, category } = req.body;
+    const { name, price, stock, isActive, category } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         return next(new CustomError(400, "Invalid product ID"))
     }
 
-    const updateData = { name, price, stoke, isActive, category };
+    const updateData = { name, price, stock, isActive, category };
     if (name) {
         updateData.slug = ensureSlug(name);
     }

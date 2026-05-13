@@ -150,7 +150,8 @@ const editDeals = AsyncHandler(async (req, res, next) => {
 
 const deleteDeal = AsyncHandler(async (req, res, next) => {
   const { productId, dealId } = req.params;
-
+  console.log(productId, dealId, "the product and deal id");
+  
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     return next(new CustomError(400, "Invalid product ID"));
   }
