@@ -18,7 +18,7 @@ class ApiFeature {
 
     paginate(){
         const page = Number(this.queryString.page) || 1;
-        const limit = 6;
+        const limit = 9;
 
         const skip = ( page - 1)* limit;
 

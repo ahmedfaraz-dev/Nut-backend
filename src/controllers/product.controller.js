@@ -257,8 +257,16 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
         return next(new CustomError(404, "No admin found"));
     }
 
-    const data = await Product.find({ user: admin._id }).populate("activeDeal").limit(12);
-    
+    // const data = await Product.find({ user: admin._id }).populate("activeDeal").limit(12);
+    const features = new ApiFeature(
+        Product.find({ user: admin._id }).populate("activeDeal"),
+        req.query
+    )
+        .search()
+        .paginate();
+
+    const data = await features.query;
+
     if (!data || data.length === 0) {
         return next(new CustomError(404, "No products found for admin"));
     }
