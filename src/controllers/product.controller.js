@@ -10,6 +10,7 @@ import User from "../models/user.models.js";
 import { ensureSlug } from "../utils/makingSlug.js";
 import { Rating } from "../models/rating.model.js";
 import Order from "../models/orderItems.model.js";
+import { ApiFeature } from "../utils/ApiFeatures.js";
 
 
 
@@ -256,7 +257,8 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
         return next(new CustomError(404, "No admin found"));
     }
 
-    const data = await Product.find({ user: admin._id }).populate("activeDeal");
+    const data = await Product.find({ user: admin._id }).populate("activeDeal").limit(12);
+    
     if (!data || data.length === 0) {
         return next(new CustomError(404, "No products found for admin"));
     }
