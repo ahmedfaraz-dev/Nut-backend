@@ -437,6 +437,12 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
             { session }
         );
 
+        // Recalculate average safely
+        updatedProduct.averageRating =
+            updatedProduct.ratingSum / updatedProduct.totalRatings;
+
+        await updatedProduct.save({ session });
+
         await session.commitTransaction();
         session.endSession();
 
