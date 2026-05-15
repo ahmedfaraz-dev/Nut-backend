@@ -20,11 +20,17 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
     const user = req.user;
 
     console.log("User is here", user);
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search } = req.query;
 
-    const totalProducts = await Product.countDocuments({ user: user._id });
+    const filter = { user: user._id, isActive: true };
 
-    const products = await Product.find({ user: user._id, isActive: true })
+    if (search?.trim()) {
+        filter.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    const totalProducts = await Product.countDocuments(filter);
+
+    const products = await Product.find(filter)
         .select("name price stock isActive activeDeal discription") // include description
         .populate({
             path: "activeDeal",
@@ -156,26 +162,30 @@ const createProduct = AsyncHandler(async (req, res, next) => {
 
 const editProduct = AsyncHandler(async (req, res, next) => {
     const productId = req.params.productId;
-    const { name, price, stock, isActive, category } = req.body;
+    const { name, price, stock, isActive, category, discription } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         return next(new CustomError(400, "Invalid product ID"))
     }
 
-    const updateData = { name, price, stock, isActive, category };
+    const updateData = { name, price, stock, isActive, category, discription };
     if (name) {
         updateData.slug = ensureSlug(name);
     }
 
-    const product = await Product.findByIdAndUpdate(productId, updateData, { returnDocument: "after", runValidators: true });
+    const product = await Product.findByIdAndUpdate(productId, updateData, { returnDocument: "after", runValidators: true })
+        .populate("activeDeal", "discount startDate endDate")
+        .populate("category", "name")
+        .select("name price stock isActive activeDeal discription images category");
 
     if (!product) {
         return next(new CustomError(404, "Failed to update the product"))
     }
     res.status(200).json({
         success: true,
-        message: 'product is updated successfully.'
-    })
+        message: "product is updated successfully.",
+        data: { product },
+    });
 });
 
 // @ delete product
@@ -257,23 +267,32 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
         return next(new CustomError(404, "No admin found"));
     }
 
-    // const data = await Product.find({ user: admin._id }).populate("activeDeal").limit(12);
     const features = new ApiFeature(
-        Product.find({ user: admin._id }).populate("activeDeal"),
+        Product.find({ user: admin._id, isActive: true })
+            .populate("activeDeal")
+            .populate("category", "name"),
         req.query
-    )
-        .search()
-        .paginate();
+    );
+
+    await features.filterCategory(Category, req.query.category);
+    features.filterPrice();
+    await features.filterDiscount(Deal, admin._id);
+    features.search();
+
+    const totalProducts = await features.countDocuments();
+    features.paginate();
 
     const data = await features.query;
 
-    if (!data || data.length === 0) {
-        return next(new CustomError(404, "No products found for admin"));
-    }
-
     res.status(200).json({
         success: true,
-        data
+        data,
+        meta: {
+            page: features.page,
+            limit: features.limit,
+            totalProducts,
+            totalPages: Math.ceil(totalProducts / features.limit) || 1,
+        },
     });
 });
 
