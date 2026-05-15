@@ -130,16 +130,19 @@ const addProfile = AsyncHandler(async (req, res, next) => {
 //@ current User details
 
 const currentUser = AsyncHandler(async (req, res, next) => {
-
     const user = req.user;
+
     res.status(200).json({
-        message: true,
-        name: user.name,
-        email: user.email,
-        isVerified: user.isVerified,
-        role: user.role,
-        avatar: user.avatar
-    })
+        success: true,
+        user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            isVerified: user.isVerified,
+            role: user.role,
+            avatar: user.avatar,
+        },
+    });
 });
 
 

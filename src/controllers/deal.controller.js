@@ -99,12 +99,9 @@ const getDeal = AsyncHandler(async (req, res, next) => {
       },
     }
   ]);
-  if(!deals || deals.length === 0) {
-    return next(new CustomError(404, "No deals found"));
-  }
   res.status(200).json({
     success: true,
-    data: deals,
+    data: deals || [],
   });
 });
 
@@ -115,10 +112,10 @@ const editDeals = AsyncHandler(async (req, res, next) => {
   const { discount, startDate, endDate } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return next(400, "Invalid product ID");
+    return next(new CustomError(400, "Invalid product ID"));
   }
   if (!mongoose.Types.ObjectId.isValid(dealId)) {
-    return next(400, "Invalid deal ID");
+    return next(new CustomError(400, "Invalid deal ID"));
   }
 
   const deal = await Deal.findOne({ _id: dealId, product: productId });
@@ -150,7 +147,8 @@ const editDeals = AsyncHandler(async (req, res, next) => {
 
 const deleteDeal = AsyncHandler(async (req, res, next) => {
   const { productId, dealId } = req.params;
-
+  console.log(productId, dealId, "the product and deal id");
+  
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     return next(new CustomError(400, "Invalid product ID"));
   }
@@ -162,27 +160,18 @@ const deleteDeal = AsyncHandler(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const product = await Product.findOne({
-      _id: productId,
-      activeDeal: dealId,
-    }).session(session);
-    if (!product) {
-      throw new CustomError(
-        404,
-        "Product not found or deal is not assigned to this product",
-      );
-    }
-
-    const deal = await Deal.findByIdAndDelete(dealId, { session });
+    const deal = await Deal.findOne({ _id: dealId, product: productId }).session(session);
     if (!deal) {
-      throw new CustomError(
-        500,
-        "Failed to delete the deal. Please try again later.",
-      );
+      throw new CustomError(404, "Deal not found for this product");
     }
 
-    product.activeDeal = null;
-    await product.save({ session });
+    await Deal.findByIdAndDelete(dealId, { session });
+
+    const product = await Product.findById(productId).session(session);
+    if (product && String(product.activeDeal) === String(dealId)) {
+      product.activeDeal = null;
+      await product.save({ session });
+    }
 
     await session.commitTransaction();
 

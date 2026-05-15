@@ -2,6 +2,7 @@ import AsyncHandler from "../handlers/AsyncHandler.js";
 import CustomError from "../handlers/CustomError.js";
 import User from "../models/user.models.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
+import { getClientUrl } from "../config/appUrls.js";
 
 
 
@@ -52,6 +53,10 @@ const loginUser = AsyncHandler(async (req, res, next) => {
 const googleAuthCallback = AsyncHandler(async (req, res, next) => {
     const user = req.user;
 
+    if (!user) {
+        return res.redirect(`${getClientUrl()}/auth/google/failed?error=google`);
+    }
+
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
@@ -62,24 +67,29 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
         return next(new CustomError(500, "Error saving refresh token"));
     }
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 15 * 24 * 60 * 60 * 1000
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 15 * 24 * 60 * 60 * 1000,
+        path: "/",
     });
 
-    res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
+    // SPA reads `token` via js-cookie for Authorization header (see axiosInstance)
+    res.cookie("token", accessToken, {
+        httpOnly: false,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
     });
 
+    const redirectUrl = new URL(`${getClientUrl()}/auth/google/callback`);
+    redirectUrl.searchParams.set("token", accessToken);
 
-    return res.redirect(
-        `${process.env.CLIENT_URL}/auth/google/callback`
-
-    );
+    return res.redirect(redirectUrl.toString());
 });
 
 const logoutUser = AsyncHandler(async (req, res, next) => {

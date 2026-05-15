@@ -10,6 +10,7 @@ import User from "../models/user.models.js";
 import { ensureSlug } from "../utils/makingSlug.js";
 import { Rating } from "../models/rating.model.js";
 import Order from "../models/orderItems.model.js";
+import { ApiFeature } from "../utils/ApiFeatures.js";
 
 
 
@@ -19,11 +20,17 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
     const user = req.user;
 
     console.log("User is here", user);
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search } = req.query;
 
-    const totalProducts = await Product.countDocuments({ user: user._id });
+    const filter = { user: user._id, isActive: true };
 
-    const products = await Product.find({ user: user._id, isActive: true })
+    if (search?.trim()) {
+        filter.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    const totalProducts = await Product.countDocuments(filter);
+
+    const products = await Product.find(filter)
         .select("name price stock isActive activeDeal discription") // include description
         .populate({
             path: "activeDeal",
@@ -155,26 +162,30 @@ const createProduct = AsyncHandler(async (req, res, next) => {
 
 const editProduct = AsyncHandler(async (req, res, next) => {
     const productId = req.params.productId;
-    const { name, price, stoke, isActive, category } = req.body;
+    const { name, price, stock, isActive, category, discription } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         return next(new CustomError(400, "Invalid product ID"))
     }
 
-    const updateData = { name, price, stoke, isActive, category };
+    const updateData = { name, price, stock, isActive, category, discription };
     if (name) {
         updateData.slug = ensureSlug(name);
     }
 
-    const product = await Product.findByIdAndUpdate(productId, updateData, { returnDocument: "after", runValidators: true });
+    const product = await Product.findByIdAndUpdate(productId, updateData, { returnDocument: "after", runValidators: true })
+        .populate("activeDeal", "discount startDate endDate")
+        .populate("category", "name")
+        .select("name price stock isActive activeDeal discription images category");
 
     if (!product) {
         return next(new CustomError(404, "Failed to update the product"))
     }
     res.status(200).json({
         success: true,
-        message: 'product is updated successfully.'
-    })
+        message: "product is updated successfully.",
+        data: { product },
+    });
 });
 
 // @ delete product
@@ -256,14 +267,32 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
         return next(new CustomError(404, "No admin found"));
     }
 
-    const data = await Product.find({ user: admin._id }).populate("activeDeal");
-    if (!data || data.length === 0) {
-        return next(new CustomError(404, "No products found for admin"));
-    }
+    const features = new ApiFeature(
+        Product.find({ user: admin._id, isActive: true })
+            .populate("activeDeal")
+            .populate("category", "name"),
+        req.query
+    );
+
+    await features.filterCategory(Category, req.query.category);
+    features.filterPrice();
+    await features.filterDiscount(Deal, admin._id);
+    features.search();
+
+    const totalProducts = await features.countDocuments();
+    features.paginate();
+
+    const data = await features.query;
 
     res.status(200).json({
         success: true,
-        data
+        data,
+        meta: {
+            page: features.page,
+            limit: features.limit,
+            totalProducts,
+            totalPages: Math.ceil(totalProducts / features.limit) || 1,
+        },
     });
 });
 
@@ -292,18 +321,14 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
 
     // ---------------- VALIDATION ----------------
     if (!userId || !productId) {
-        return next(CustomError(400, "User ID and Product ID are required"));
+        return next(new CustomError(400, "User ID and Product ID are required"));
     }
 
     if (
         !mongoose.Types.ObjectId.isValid(userId) ||
         !mongoose.Types.ObjectId.isValid(productId)
     ) {
-        return next(CustomError(422, "Invalid userId or productId"));
-    }
-
-    if (rating < 1 || rating > 5) {
-        return next(CustomError(400, "Rating must be between 1 and 5"));
+        return next(new CustomError(422, "Invalid userId or productId"));
     }
 
     // ---------------- USER CHECK ----------------
@@ -313,7 +338,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     });
 
     if (!user) {
-        return next(CustomError(403, "User not verified"));
+        return next(new CustomError(403, "User not verified"));
     }
 
     // ---------------- PRODUCT CHECK ----------------
@@ -323,7 +348,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     });
 
     if (!product) {
-        return next(CustomError(404, "Product not found"));
+        return next(new CustomError(404, "Product not found"));
     }
 
     // ---------------- ORDER VALIDATION ----------------
@@ -336,7 +361,7 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
 
     if (!hasPurchased) {
         return next(
-            CustomError(403, "You can only review purchased products")
+            new CustomError(403, "You can only review purchased products")
         );
     }
 
@@ -345,8 +370,17 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
     try {
         session.startTransaction();
 
-        // ---------------- ATOMIC UPSERT REVIEW ----------------
-        const oldReview = await Rating.findOneAndUpdate(
+        // ---------------- CHECK EXISTING REVIEW ----------------
+        const existingReview = await Rating.findOne({
+            userId,
+            productId
+        }).session(session);
+
+        const isNewReview = !existingReview;
+        const previousRating = existingReview?.rating;
+
+        // ---------------- UPSERT REVIEW ----------------
+        const ratingDoc = await Rating.findOneAndUpdate(
             { userId, productId },
             {
                 $set: {
@@ -363,12 +397,9 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         );
 
         // ---------------- PRODUCT STATS UPDATE ----------------
-        const isNewReview = oldReview.createdAt.getTime() === oldReview.updatedAt.getTime();
-
         let updateQuery;
 
         if (isNewReview) {
-            // NEW REVIEW
             updateQuery = {
                 $inc: {
                     totalRatings: 1,
@@ -377,9 +408,6 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
                 }
             };
         } else {
-            // UPDATED REVIEW
-            const previousRating = oldReview.rating;
-
             updateQuery = {
                 $inc: {
                     ratingSum: rating - previousRating,
@@ -392,7 +420,21 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
             updateQuery,
-            { session, new: true }
+            {
+                session,
+                new: true,
+                runValidators: false
+            }
+        );
+
+        // Recalculate average safely
+        const averageRating =
+            updatedProduct.ratingSum / updatedProduct.totalRatings;
+
+        await Product.updateOne(
+            { _id: productId },
+            { $set: { averageRating } },
+            { session }
         );
 
         // Recalculate average safely
@@ -417,7 +459,6 @@ const ratingProduct = AsyncHandler(async (req, res, next) => {
         return next(error);
     }
 });
-
 
 
 const getProductReviews = AsyncHandler(async (req, res, next) => {

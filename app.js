@@ -25,36 +25,35 @@ const app = express();
 app.set('trust proxy', 1);
 
 // implementing the cors middleware
-const allowedOrigins = ['http://localhost:8000', 'http://localhost:5173', 'http://localhost:5174'];
 
+const clientURL = process.env.CLIENT_URL;
 
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    clientURL
+].filter(Boolean);
 
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin) {
-            return callback(null, { origin: true, methods: ["GET"] });
-        }
+        // allow Postman / server-to-server requests
+        if (!origin) return callback(null, true);
+
         if (allowedOrigins.includes(origin)) {
-            return callback(null, {
-                origin: true,
-                methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-                credentials: true
-            });
+            callback(null, true);
         } else {
-            return callback(null,
-                {
-                    origin: true,
-                    methods: ["GET"],
-                    credentials: true
-                }
-            )
+            callback(new Error("Not allowed by CORS"));
         }
-    }
-}
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+};
 
 app.use(cors(corsOptions));
 
-
+// IMPORTANT: handle preflight requests
+app.options(/.*/, cors(corsOptions));
 
 
 // appling the rate limiter middleware
@@ -104,6 +103,7 @@ app.use(passport.session());
 app.get('/', (req, res) => {
     res.send('API is running 🚀');
 });
+
 
 
 // implementing the auth routes
