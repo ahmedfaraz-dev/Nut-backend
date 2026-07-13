@@ -23,7 +23,7 @@ const parsedData = AsyncHandler(async (req, res, next) => {
         discription: req.body.discription,
         isActive: req.body.isActive === "true" || req.body.isActive === true,
         deals: (dealsParsed && Object.keys(dealsParsed).length > 0) ? dealsParsed : undefined,
-        Images: req.files && req.files.length > 0 ? req.files : []
+        Images: req.files && req.files.length > 0 ? req.files : undefined
     };
 
     // Replace req.body with parsed data for Zod validation

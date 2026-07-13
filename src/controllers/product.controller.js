@@ -31,7 +31,7 @@ const getAllAdminProducts = AsyncHandler(async (req, res) => {
     const totalProducts = await Product.countDocuments(filter);
 
     const products = await Product.find(filter)
-        .select("name price stock isActive activeDeal discription") // include description
+        .select("name price stock isActive activeDeal discription images") // include description and images
         .populate({
             path: "activeDeal",
             select: "discount startDate endDate user"
@@ -171,6 +171,29 @@ const editProduct = AsyncHandler(async (req, res, next) => {
     const updateData = { name, price, stock, isActive, category, discription };
     if (name) {
         updateData.slug = ensureSlug(name);
+    }
+    
+    const files = req.files;
+    if (files && files.length > 0) {
+        const productImage = [];
+        for (const file of files) {
+            const detectedType = await fileTypeFromBuffer(file.buffer);
+            if (!detectedType || !["image/jpeg", "image/png"].includes(detectedType.mime)) {
+                return next(new CustomError(400, "Invalid image file"));
+            }
+            try {
+                const result = await uploadToCloudinary({
+                    resource_type: "image",
+                    buffer: file.buffer,
+                    folder: "E-commerce_products",
+                    transformation: [{ quality: "auto" }]
+                });
+                productImage.push(result.secure_url);
+            } catch (error) {
+                return next(new CustomError(500, "Cloudinary upload failed"));
+            }
+        }
+        updateData.images = productImage;
     }
 
     const product = await Product.findByIdAndUpdate(productId, updateData, { returnDocument: "after", runValidators: true })
