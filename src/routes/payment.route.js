@@ -6,7 +6,7 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const SUPPORTED_CURRENCIES = new Set(["usd", "eur", "gbp", "inr", "pkr"]);
+const SUPPORTED_CURRENCIES = new Set(["usd", "eur", "gbp", "inr", "pkr", "cad", "aud", "aed", "sar", "cny", "jpy", "sek", "cop"]);
 const BASE_CURRENCY = "pkr";
 const CURRENCY_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -21,16 +21,13 @@ const getExchangeRates = async () => {
     return currencyRatesCache.rates;
   }
 
-  if (!process.env.CURRENCY_API_KEY) {
-    throw new Error("Currency API key is missing");
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
+    // using free public endpoint, doesn't require API key
     const response = await fetch(
-      `https://v6.exchangerate-api.com/v6/${process.env.CURRENCY_API_KEY}/latest/${BASE_CURRENCY.toUpperCase()}`,
+      `https://open.er-api.com/v6/latest/${BASE_CURRENCY.toUpperCase()}`,
       { signal: controller.signal }
     );
 
@@ -39,7 +36,7 @@ const getExchangeRates = async () => {
     }
 
     const data = await response.json();
-    const rates = data?.conversion_rates;
+    const rates = data?.rates; // open.er-api uses 'rates' instead of 'conversion_rates'
 
     if (!rates || typeof rates !== "object") {
       throw new Error("Invalid response from currency API");

@@ -52,7 +52,7 @@ const orderSchema = new Schema({
     currency: {
         type: String,
         default: "pkr",
-        enum: ["usd", "eur", "gbp", "inr", "pkr"]
+        enum: ["usd", "eur", "gbp", "inr", "pkr", "cad", "aud", "aed", "sar", "cny", "jpy", "sek", "cop"]
     },
     addressSnapshot: {
         address: {type: String, required: true},

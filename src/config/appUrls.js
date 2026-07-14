@@ -2,9 +2,9 @@
  * Deployment URLs — override with env vars on Railway/Vercel.
  */
 const PRODUCTION = {
-  clientUrl: "https://nuts-frontend-tau.vercel.app",
-  apiBase: "https://nut-backend-production-73f0.up.railway.app/api/v1",
-  googleCallback: "https://nut-backend-production-73f0.up.railway.app/api/v1/auth/google/callback",
+  clientUrl: "https://nuts-frontend-seven.vercel.app",
+  apiBase: "https://nut-backend.onrender.com/api/v1",
+  googleCallback: "https://nut-backend.onrender.com/api/v1/auth/google/callback",
 };
 
 const LOCAL = {
