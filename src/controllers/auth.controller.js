@@ -86,10 +86,10 @@ const googleAuthCallback = AsyncHandler(async (req, res, next) => {
         path: "/",
     });
 
-    const redirectUrl = new URL(`${getClientUrl()}/auth/google/callback`);
-    redirectUrl.searchParams.set("token", accessToken);
+    // const redirectUrl = new URL(`${getClientUrl()}/auth/google/callback`);
+    // redirectUrl.searchParams.set("token", accessToken);
 
-    return res.redirect(redirectUrl.toString());
+    return res.redirect(`${process.env.CLIENT_URL}/auth/sucess?acessToken=${accessToken}`);
 });
 
 const logoutUser = AsyncHandler(async (req, res, next) => {
