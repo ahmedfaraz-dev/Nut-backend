@@ -32,10 +32,13 @@ const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
     clientURL
-].filter(Boolean);
+];
+   
 
 const corsOptions = {
     origin: function (origin, callback) {
+        console.log("Request Origin:", origin);
+        console.log("Allowed Origins:", allowedOrigins);
         // allow Postman / server-to-server requests
         if (!origin) return callback(null, true);
 
