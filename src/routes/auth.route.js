@@ -35,7 +35,7 @@ const clientUrl = getClientUrl();
 authRouter.route('/google/callback').get(
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${clientUr}/auth/google/failed?error=google`,
+    failureRedirect: `${process.env.CLIENT_URL}/auth/google/failed?error=google`,
   }),
   googleAuthCallback
 );
