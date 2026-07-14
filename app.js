@@ -13,8 +13,6 @@ import { adminRoute } from "./src/routes/admin.route.js";
 import "./src/events/index.js"; // Initialize event listeners
 import multer from "multer";
 import paymentRoutes from './src/routes/payment.route.js';
-import session from "express-session";
-import passport from "./src/config/passport.js";
 
 // use helmet 
 // mongo sanitizer
@@ -86,22 +84,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // implementing the cookie parser middleware
 app.use(cookieParser());
-
-// session middleware for passport
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
-
-// initialize passport
-app.use(passport.initialize());
-app.use(passport.session());
 
 app.get('/', (req, res) => {
     res.send('API is running 🚀');

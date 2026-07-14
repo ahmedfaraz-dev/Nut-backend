@@ -3,6 +3,7 @@ import CustomError from "../handlers/CustomError.js";
 import User from "../models/user.models.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 import { getClientUrl } from "../config/appUrls.js";
+import { getGoogleAuthUrl, getGoogleUserInfo } from "../config/google.js";
 
 
 
@@ -121,6 +122,92 @@ const googleAuthFailed = AsyncHandler(async (req, res) => {
     });
 });
 
+// ──────────────────────────────────────────────
+// Google Auth Library flow (replaces passport)
+// ──────────────────────────────────────────────
+
+/**
+ * Step 1: redirect the browser to Google's consent screen.
+ */
+const googleRedirect = AsyncHandler(async (req, res) => {
+    const url = getGoogleAuthUrl();
+    return res.redirect(url);
+});
+
+/**
+ * Step 2: Google redirects back here with ?code=...
+ * Exchange it for tokens, fetch the user's profile,
+ * find-or-create in DB, then issue JWTs.
+ */
+const googleCallback = AsyncHandler(async (req, res, next) => {
+    const { code, error } = req.query;
+
+    if (error || !code) {
+        return res.redirect(`${getClientUrl()}/auth/google/failed?error=google`);
+    }
+
+    let profile;
+    try {
+        profile = await getGoogleUserInfo(code);
+    } catch (err) {
+        console.error('Google token exchange error:', err.message);
+        return res.redirect(`${getClientUrl()}/auth/google/failed?error=google`);
+    }
+
+    const { sub: googleId, email, name, given_name, family_name } = profile;
+
+    let user = await User.findOne({
+        $or: [{ googleId }, { email }],
+    });
+
+    if (user) {
+        if (!user.googleId) {
+            user.googleId = googleId;
+            user.isVerified = true;
+            user.provider = 'google';
+            await user.save();
+        }
+    } else {
+        const fullName = name ||
+            `${given_name || ''} ${family_name || ''}`.trim() ||
+            'Google User';
+
+        user = await User.create({
+            googleId,
+            name: fullName,
+            email,
+            provider: 'google',
+            isVerified: true,
+        });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    user.refreshToken.push({ token: refreshToken });
+    await user.save();
+
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 15 * 24 * 60 * 60 * 1000,
+        path: '/',
+    });
+
+    res.cookie('token', accessToken, {
+        httpOnly: false,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+    });
+
+    return res.redirect(`${getClientUrl()}/auth/sucess?acessToken=${accessToken}`);
+});
+
 //@ change password
 
 const changePassword = AsyncHandler(async (req, res, next) => {
@@ -159,4 +246,4 @@ const changePassword = AsyncHandler(async (req, res, next) => {
 });
 
 
-export { loginUser, googleAuthCallback, googleAuthFailed, logoutUser, changePassword };
+export { loginUser, googleAuthCallback, googleAuthFailed, logoutUser, changePassword, googleRedirect, googleCallback };
