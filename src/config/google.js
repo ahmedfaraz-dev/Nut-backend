@@ -1,17 +1,24 @@
 import { OAuth2Client } from 'google-auth-library';
 import { getGoogleCallbackURL } from './appUrls.js';
 
-const client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  getGoogleCallbackURL()
-);
+const createOAuthClient = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const callback = getGoogleCallbackURL();
+
+  // small runtime debug to help with missing env issues
+  // remove or reduce logging in production if desired
+  if (!clientId) console.warn('Warning: GOOGLE_CLIENT_ID is not set at runtime');
+
+  return new OAuth2Client(clientId, clientSecret, callback);
+};
 
 /**
  * Returns the Google OAuth2 redirect URL.
  * The user is sent here to grant permission.
  */
 export const getGoogleAuthUrl = () => {
+  const client = createOAuthClient();
   return client.generateAuthUrl({
     access_type: 'offline',
     scope: ['profile', 'email'],
@@ -24,6 +31,7 @@ export const getGoogleAuthUrl = () => {
  * then fetches the user's Google profile via tokeninfo / userinfo.
  */
 export const getGoogleUserInfo = async (code) => {
+  const client = createOAuthClient();
   const { tokens } = await client.getToken(code);
   client.setCredentials(tokens);
 

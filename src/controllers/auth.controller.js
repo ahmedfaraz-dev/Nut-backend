@@ -141,16 +141,25 @@ const googleRedirect = AsyncHandler(async (req, res) => {
  */
 const googleCallback = AsyncHandler(async (req, res, next) => {
     const { code, error } = req.query;
+    // Debug: log incoming query params to help debug callback issues
+    console.log('Google callback received:', req.query);
 
     if (error || !code) {
+        console.warn('Google callback missing code or returned error:', { error, code });
         return res.redirect(`${getClientUrl()}/auth/google/failed?error=google`);
     }
 
     let profile;
     try {
         profile = await getGoogleUserInfo(code);
+        console.log('Google profile fetched:', {
+            sub: profile?.sub,
+            email: profile?.email,
+            email_verified: profile?.email_verified,
+        });
     } catch (err) {
-        console.error('Google token exchange error:', err.message);
+        console.error('Google token exchange error:', err?.message || err);
+        console.error(err?.stack || err);
         return res.redirect(`${getClientUrl()}/auth/google/failed?error=google`);
     }
 
@@ -159,6 +168,8 @@ const googleCallback = AsyncHandler(async (req, res, next) => {
     let user = await User.findOne({
         $or: [{ googleId }, { email }],
     });
+
+    console.log('User lookup result for google callback:', { found: !!user, googleId, email });
 
     if (user) {
         if (!user.googleId) {
@@ -205,7 +216,7 @@ const googleCallback = AsyncHandler(async (req, res, next) => {
         path: '/',
     });
 
-    return res.redirect(`${getClientUrl()}/auth/sucess?acessToken=${accessToken}`);
+    return res.redirect(`${getClientUrl()}/login?accessToken=${accessToken}`);
 });
 
 //@ change password
