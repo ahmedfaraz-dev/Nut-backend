@@ -13,6 +13,7 @@ import { adminRoute } from "./src/routes/admin.route.js";
 import "./src/events/index.js"; // Initialize event listeners
 import multer from "multer";
 import paymentRoutes from './src/routes/payment.route.js';
+import { chatbotRoute } from "./src/routes/chatbot.route.js";
 
 // use helmet 
 // mongo sanitizer
@@ -97,6 +98,7 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/product', productRoute);
 app.use('/api/v1/admin', adminRoute)
 app.use('/api/v1', paymentRoutes);
+app.use('/api/v1/chatbot', chatbotRoute);
 
 
 // multer middleware";
