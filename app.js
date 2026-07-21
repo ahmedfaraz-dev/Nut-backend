@@ -13,6 +13,7 @@ import { adminRoute } from "./src/routes/admin.route.js";
 import "./src/events/index.js"; // Initialize event listeners
 import multer from "multer";
 import paymentRoutes from './src/routes/payment.route.js';
+import locationRoutes from './src/routes/location.route.js';
 import session from "express-session";
 import passport from "./src/config/passport.js";
 
@@ -112,6 +113,7 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/product', productRoute);
 app.use('/api/v1/admin', adminRoute)
 app.use('/api/v1', paymentRoutes);
+app.use('/api/v1/location', locationRoutes);
 
 
 // multer middleware";
@@ -132,3 +134,4 @@ app.use(ErrorMiddleware);
 
 
 export default app;
+// Trigger restart

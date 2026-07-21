@@ -200,7 +200,6 @@ const editProduct = AsyncHandler(async (req, res, next) => {
         .populate("activeDeal", "discount startDate endDate")
         .populate("category", "name")
         .select("name price stock isActive activeDeal discription images category");
-
     if (!product) {
         return next(new CustomError(404, "Failed to update the product"))
     }

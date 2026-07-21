@@ -29,8 +29,6 @@ const getCategory = AsyncHandler(async (req, res, next) => {
         message: "Category fetched successfully",
         category
     });
-
-
 });
 
 //@ eidt category 
@@ -140,7 +138,6 @@ const deleteCategory = AsyncHandler(async (req, res, next) => {
         success: true,
         message: "Category is deleted successfully"
     })
-
 });
 
 
