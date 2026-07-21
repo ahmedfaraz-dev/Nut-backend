@@ -172,7 +172,7 @@ const editProduct = AsyncHandler(async (req, res, next) => {
     if (name) {
         updateData.slug = ensureSlug(name);
     }
-    
+
     const files = req.files;
     if (files && files.length > 0) {
         const productImage = [];
@@ -243,7 +243,13 @@ const getProduct = AsyncHandler(async (req, res, next) => {
 
     const product = await Product.findById(id)
         .select("_id name price stock isActive activeDeal images discription slug category averageRating totalRatings ratingSum ratingBreakdown")
-        .populate("activeDeal");
+        .populate({
+            path: "activeDeal",
+            match: {
+                startDate: { $lte: new Date() },
+                endDate: { $gt: new Date() }
+            }
+        });
 
     if (!product) {
         return next(new CustomError(404, "Product not found"));
@@ -272,7 +278,11 @@ const getProductsByNameOrSlug = AsyncHandler(async (req, res, next) => {
     const products = await Product.find(query)
         .populate({
             path: "activeDeal",
-            select: "discount startDate endDate"
+            select: "discount startDate endDate",
+            match: {
+                startDate: { $lte: new Date() },
+                endDate: { $gt: new Date() }
+            }
         })
         .lean();
 
@@ -292,7 +302,13 @@ const getAllProducts = AsyncHandler(async (req, res, next) => {
 
     const features = new ApiFeature(
         Product.find({ user: admin._id, isActive: true })
-            .populate("activeDeal")
+            .populate({
+                path: "activeDeal",
+                match: {
+                    startDate: { $lte: new Date() },
+                    endDate: { $gt: new Date() }
+                }
+            })
             .populate("category", "name"),
         req.query
     );
