@@ -14,6 +14,7 @@ import "./src/events/index.js"; // Initialize event listeners
 import multer from "multer";
 import paymentRoutes from './src/routes/payment.route.js';
 import { chatbotRoute } from "./src/routes/chatbot.route.js";
+import locationRoutes from "./src/routes/location.route.js";
 
 // use helmet 
 // mongo sanitizer
@@ -32,7 +33,7 @@ const allowedOrigins = [
     "http://localhost:5174",
     clientURL
 ];
-   
+
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -99,6 +100,7 @@ app.use('/api/v1/product', productRoute);
 app.use('/api/v1/admin', adminRoute)
 app.use('/api/v1', paymentRoutes);
 app.use('/api/v1/chatbot', chatbotRoute);
+app.use('/api/v1/location', locationRoutes);
 
 
 // multer middleware";
