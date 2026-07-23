@@ -13,9 +13,7 @@ import { adminRoute } from "./src/routes/admin.route.js";
 import "./src/events/index.js"; // Initialize event listeners
 import multer from "multer";
 import paymentRoutes from './src/routes/payment.route.js';
-import locationRoutes from './src/routes/location.route.js';
-import session from "express-session";
-import passport from "./src/config/passport.js";
+import { chatbotRoute } from "./src/routes/chatbot.route.js";
 
 // use helmet 
 // mongo sanitizer
@@ -33,10 +31,13 @@ const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
     clientURL
-].filter(Boolean);
+];
+   
 
 const corsOptions = {
     origin: function (origin, callback) {
+        console.log("Request Origin:", origin);
+        console.log("Allowed Origins:", allowedOrigins);
         // allow Postman / server-to-server requests
         if (!origin) return callback(null, true);
 
@@ -85,22 +86,6 @@ app.use(express.urlencoded({ extended: true }));
 // implementing the cookie parser middleware
 app.use(cookieParser());
 
-// session middleware for passport
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
-
-// initialize passport
-app.use(passport.initialize());
-app.use(passport.session());
-
 app.get('/', (req, res) => {
     res.send('API is running 🚀');
 });
@@ -113,7 +98,7 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/product', productRoute);
 app.use('/api/v1/admin', adminRoute)
 app.use('/api/v1', paymentRoutes);
-app.use('/api/v1/location', locationRoutes);
+app.use('/api/v1/chatbot', chatbotRoute);
 
 
 // multer middleware";
@@ -134,4 +119,3 @@ app.use(ErrorMiddleware);
 
 
 export default app;
-// Trigger restart
